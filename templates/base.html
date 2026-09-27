@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}GeoCode Parcel System{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="stamp-strip" aria-hidden="true"></div>
+<header class="site-header">
+  <a href="{{ url_for('dashboard') }}" class="brand">
+    <span class="brand-mark">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+        <path d="M15 2 L28 9 V21 L15 28 L2 21 V9 Z" stroke="currentColor" stroke-width="1.6" fill="none"/>
+        <circle cx="15" cy="15" r="3.2" fill="currentColor"/>
+      </svg>
+    </span>
+    <span class="brand-text">GeoCode<em>Parcel</em></span>
+  </a>
+  <nav class="site-nav">
+    <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint=='dashboard' }}">Dashboard</a>
+    <a href="{{ url_for('addresses') }}" class="{{ 'active' if request.endpoint in ['addresses','add_address'] }}">Addresses</a>
+    <a href="{{ url_for('add_parcel') }}" class="{{ 'active' if request.endpoint=='add_parcel' }}">New Parcel</a>
+    <a href="{{ url_for('track') }}" class="{{ 'active' if request.endpoint=='track' }}">Track</a>
+    <a href="{{ url_for('scan') }}" class="{{ 'active' if request.endpoint=='scan' }}">Scan</a>
+  </nav>
+</header>
+
+<main class="page">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-stack">
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="site-footer">
+  <span>GeoCode Parcel Delivery System &mdash; scannable location codes instead of handwritten addresses.</span>
+</footer>
+</body>
+</html>

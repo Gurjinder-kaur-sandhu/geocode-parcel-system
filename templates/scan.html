@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Scan — GeoCode Parcel System{% endblock %}
+{% block content %}
+
+<div class="section-head"><h2>Scan a parcel</h2></div>
+
+<form method="post" enctype="multipart/form-data" class="form-card">
+  <div class="field">
+    <label for="qr_image">Upload a QR code image</label>
+    <input type="file" id="qr_image" name="qr_image" accept="image/*">
+    {% if not pyzbar_available %}
+    <div class="field-hint">Image decoding needs the <code>pyzbar</code> + <code>zbar</code> library on this
+      machine — see README. Use manual entry below in the meantime.</div>
+    {% endif %}
+  </div>
+
+  <div class="field">
+    <label for="manual_code">…or type the GeoCode directly</label>
+    <input type="text" id="manual_code" name="manual_code" placeholder="e.g. TTNFVH5QXD" style="font-family:'JetBrains Mono',monospace;">
+  </div>
+
+  <button type="submit" class="btn">Scan</button>
+</form>
+
+{% if result %}
+  {% if result.success %}
+  <div class="section-head" style="margin-top:32px;"><h2>Match found</h2></div>
+  <div class="result-card">
+    <img src="{{ url_for('static', filename=result.parcel.qr_path) }}" width="140" height="140" alt="QR code">
+    <div class="result-meta">
+      <dl style="margin:0;">
+        <dt>Scanned code</dt><dd><span class="code-chip">{{ result.code }}</span></dd>
+        <dt>Tracking ID</dt><dd>{{ result.parcel.tracking_id }}</dd>
+        <dt>Receiver</dt><dd>{{ result.parcel.receiver_name }} &middot; {{ result.parcel.receiver_phone }}</dd>
+        <dt>Address</dt><dd>{{ result.parcel.raw_address }}</dd>
+        <dt>Current status</dt><dd><span class="status-pill status-{{ result.parcel.status }}">{{ result.parcel.status.replace('_',' ').title() }}</span></dd>
+      </dl>
+      <form method="post" action="{{ url_for('update_status') }}" style="margin-top:16px; display:flex; gap:8px;">
+        <input type="hidden" name="parcel_id" value="{{ result.parcel.id }}">
+        <select name="status" style="border:1px solid var(--line); border-radius:3px; padding:6px;">
+          {% for s in ['CREATED','IN_TRANSIT','OUT_FOR_DELIVERY','DELIVERED','FAILED'] %}
+          <option value="{{ s }}" {{ 'selected' if result.parcel.status==s }}>{{ s.replace('_',' ').title() }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-sm" type="submit">Advance status</button>
+      </form>
+      <a href="https://www.google.com/maps/dir/?api=1&destination={{ result.parcel.latitude }},{{ result.parcel.longitude }}"
+         target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="margin-top:10px; display:inline-block;">
+        📍 Navigate to this parcel
+      </a>
+    </div>
+  </div>
+  <div style="margin-top:20px; border:1px solid var(--line); border-radius:6px; overflow:hidden;">
+    <iframe
+      src="https://www.openstreetmap.org/export/embed.html?bbox={{ result.parcel.longitude|float - 0.002 }}%2C{{ result.parcel.latitude|float - 0.002 }}%2C{{ result.parcel.longitude|float + 0.002 }}%2C{{ result.parcel.latitude|float + 0.002 }}&layer=mapnik&marker={{ result.parcel.latitude }}%2C{{ result.parcel.longitude }}"
+      width="100%" height="260" style="border:0;" loading="lazy">
+    </iframe>
+  </div>
+  {% else %}
+  <div class="scan-fail" style="margin-top:24px;">
+    Scanned code <strong>{{ result.code }}</strong> doesn't match any parcel in the system.
+    This event has been logged for audit.
+  </div>
+  {% endif %}
+{% endif %}
+
+{% endblock %}

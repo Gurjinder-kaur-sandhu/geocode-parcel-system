@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Addresses — GeoCode Parcel System{% endblock %}
+{% block content %}
+
+<div class="section-head">
+  <h2>Registered addresses</h2>
+  <a href="{{ url_for('add_address') }}" class="btn btn-outline btn-sm">+ Register new address</a>
+</div>
+<p style="color:var(--ink-soft); max-width:60ch; margin-top:-8px;">
+  Each row here is a real location, captured once. Any parcel sent to that
+  phone number reuses the same GeoCode below — that's the "10,000+ unique
+  GeoCodes" idea: one code per address, reused across many parcels.
+</p>
+
+{% if addresses %}
+<table class="parcel-table">
+  <thead>
+    <tr><th>Receiver</th><th>Phone</th><th>Label</th><th>GeoCode</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for a in addresses %}
+    <tr>
+      <td>{{ a.receiver_name }}</td>
+      <td>{{ a.receiver_phone }}</td>
+      <td>{{ a.label }}</td>
+      <td><span class="code-chip">{{ a.geocode }}</span></td>
+      <td><a href="{{ url_for('add_parcel') }}" class="btn btn-outline btn-sm">Send parcel</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+  No addresses registered yet. <a href="{{ url_for('add_address') }}">Register the first one</a> —
+  do this while standing at that location, so the GPS point is real.
+</div>
+{% endif %}
+
+{% endblock %}

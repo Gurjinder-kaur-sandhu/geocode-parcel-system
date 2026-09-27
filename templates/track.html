@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Track — GeoCode Parcel System{% endblock %}
+{% block content %}
+
+<div class="section-head"><h2>Track a parcel</h2></div>
+
+<form method="post" class="track-search">
+  <input type="text" name="query" placeholder="Enter GeoCode or Tracking ID" required
+         value="{{ request.form.query if request.method=='POST' else '' }}">
+  <button class="btn" type="submit">Track</button>
+</form>
+
+{% if parcel %}
+<div class="result-card">
+  <img src="{{ url_for('static', filename=parcel.qr_path) }}" width="150" height="150" alt="QR code">
+  <div class="result-meta">
+    <dl style="margin:0;">
+      <dt>Tracking ID</dt><dd>{{ parcel.tracking_id }}</dd>
+      <dt>GeoCode</dt><dd><span class="code-chip">{{ parcel.geocode }}</span></dd>
+      <dt>Receiver</dt><dd>{{ parcel.receiver_name }} &middot; {{ parcel.receiver_phone }}</dd>
+      <dt>Address</dt><dd>{{ parcel.raw_address }}</dd>
+      <dt>Status</dt><dd><span class="status-pill status-{{ parcel.status }}">{{ parcel.status.replace('_',' ').title() }}</span></dd>
+    </dl>
+
+    <div class="progress-track">
+      {% set steps = ['CREATED','IN_TRANSIT','OUT_FOR_DELIVERY','DELIVERED'] %}
+      {% set current_idx = steps.index(parcel.status) if parcel.status in steps else -1 %}
+      {% for s in steps %}
+      <div class="progress-step {{ 'done' if loop.index0 <= current_idx }}">{{ s.replace('_',' ').title() }}</div>
+      {% endfor %}
+    </div>
+
+    <a href="https://www.google.com/maps/dir/?api=1&destination={{ parcel.latitude }},{{ parcel.longitude }}"
+       target="_blank" rel="noopener" class="btn btn-sm" style="margin-top:6px; display:inline-block;">
+      📍 Open in Google Maps / Navigate
+    </a>
+  </div>
+</div>
+
+<div style="margin-top:20px; border:1px solid var(--line); border-radius:6px; overflow:hidden;">
+  <iframe
+    src="https://www.openstreetmap.org/export/embed.html?bbox={{ parcel.longitude|float - 0.002 }}%2C{{ parcel.latitude|float - 0.002 }}%2C{{ parcel.longitude|float + 0.002 }}%2C{{ parcel.latitude|float + 0.002 }}&layer=mapnik&marker={{ parcel.latitude }}%2C{{ parcel.longitude }}"
+    width="100%" height="260" style="border:0;" loading="lazy">
+  </iframe>
+</div>
+{% elif searched %}
+<div class="empty-state">No parcel matches that code. Check for typos and try again.</div>
+{% endif %}
+
+{% endblock %}

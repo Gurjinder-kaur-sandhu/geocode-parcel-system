@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}New Parcel — GeoCode Parcel System{% endblock %}
+{% block content %}
+
+<div class="section-head"><h2>Create a parcel</h2></div>
+
+{% if success %}
+<div class="result-card">
+  <img src="{{ url_for('static', filename=parcel.qr_path) }}" width="160" height="160" alt="QR code">
+  <div class="result-meta">
+    <dl style="margin:0;">
+      <dt>Tracking ID</dt><dd>{{ parcel.tracking_id }}</dd>
+      <dt>GeoCode</dt><dd><span class="code-chip">{{ parcel.geocode }}</span></dd>
+      <dt>Receiver</dt><dd>{{ parcel.receiver_name }} &middot; {{ parcel.label }}</dd>
+      <dt>Coordinates</dt><dd>{{ "%.6f"|format(parcel.lat) }}, {{ "%.6f"|format(parcel.lon) }}</dd>
+    </dl>
+    <div style="margin-top:18px; display:flex; gap:10px;">
+      <a href="{{ url_for('add_parcel') }}" class="btn btn-outline btn-sm">Create another</a>
+      <a href="{{ url_for('dashboard') }}" class="btn btn-sm">Go to dashboard</a>
+      <a href="https://www.google.com/maps/dir/?api=1&destination={{ parcel.lat }},{{ parcel.lon }}"
+         target="_blank" rel="noopener" class="btn btn-outline btn-sm">📍 Open in Google Maps</a>
+    </div>
+  </div>
+</div>
+{% else %}
+
+<p style="color:var(--ink-soft); max-width:60ch; margin-top:-8px;">
+  Pick a receiver whose address is already registered. Their location was
+  captured once, when they stood at that spot — you're just reusing it.
+</p>
+
+{% if not addresses %}
+<div class="empty-state">
+  No receivers registered yet. <a href="{{ url_for('add_address') }}">Register a receiver's address first</a>,
+  then come back here to create a parcel for them.
+</div>
+{% else %}
+<form method="post" class="form-card">
+  <div class="field">
+    <label for="sender_name">Sender name</label>
+    <input type="text" id="sender_name" name="sender_name" required>
+  </div>
+
+  <div class="field">
+    <label for="address_id">Deliver to</label>
+    <select id="address_id" name="address_id" required style="width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:3px;">
+      <option value="" disabled selected>Choose a registered receiver…</option>
+      {% for a in addresses %}
+      <option value="{{ a.id }}">{{ a.receiver_name }} — {{ a.receiver_phone }} — {{ a.label }}</option>
+      {% endfor %}
+    </select>
+    <div class="field-hint">Don't see them? <a href="{{ url_for('add_address') }}">Register their address first</a>.</div>
+  </div>
+
+  <div class="field">
+    <label for="note">Parcel note <span style="font-weight:400; color:var(--ink-soft);">(optional)</span></label>
+    <input type="text" id="note" name="note" placeholder="e.g. Fragile — books order #4521">
+  </div>
+
+  <button type="submit" class="btn">Generate GeoCode &amp; QR for this parcel</button>
+</form>
+{% endif %}
+{% endif %}
+
+{% endblock %}

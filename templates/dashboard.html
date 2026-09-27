@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — GeoCode Parcel System{% endblock %}
+{% block content %}
+
+<section class="hero">
+  <div>
+    <h1>One scan replaces one handwritten address.</h1>
+    <p>Every parcel gets a 10-character GeoCode generated from its exact
+       drop-off point. Delivery staff scan it instead of interpreting
+       handwriting, so a courier in Kanpur reads the same code the same
+       way as one in Kochi.</p>
+    <div style="margin-top:22px; display:flex; gap:12px;">
+      <a href="{{ url_for('add_parcel') }}" class="btn">Create a parcel</a>
+      <a href="{{ url_for('scan') }}" class="btn btn-outline">Scan a code</a>
+    </div>
+  </div>
+  <div class="hero-code-card">
+    <div class="hero-code-label">Sample GeoCode</div>
+    <div class="hero-code">TTNFVH5QXD</div>
+    <div class="hero-code-sub">Encodes latitude + longitude to ~1.2m precision — accurate enough to tell a house from its neighbour.</div>
+  </div>
+</section>
+
+<div class="stat-row">
+  <div class="stat-card">
+    <div class="stat-number">{{ stats.total }}</div>
+    <div class="stat-label">Total parcels</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-number">{{ stats.in_transit }}</div>
+    <div class="stat-label">In transit</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-number">{{ stats.delivered }}</div>
+    <div class="stat-label">Delivered</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-number">{{ stats.failed }}</div>
+    <div class="stat-label">Failed / misroute</div>
+  </div>
+</div>
+
+<div class="section-head">
+  <h2>Recent parcels</h2>
+  <a href="{{ url_for('add_parcel') }}" class="btn btn-outline btn-sm">+ New parcel</a>
+</div>
+
+{% if parcels %}
+<table class="parcel-table">
+  <thead>
+    <tr>
+      <th>Tracking ID</th>
+      <th>GeoCode</th>
+      <th>Receiver</th>
+      <th>Status</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in parcels %}
+    <tr>
+      <td>{{ p.tracking_id }}</td>
+      <td><span class="code-chip">{{ p.geocode }}</span></td>
+      <td>{{ p.receiver_name }}</td>
+      <td><span class="status-pill status-{{ p.status }}">{{ p.status.replace('_',' ').title() }}</span></td>
+      <td>
+        <form method="post" action="{{ url_for('update_status') }}" style="display:flex; gap:6px;">
+          <input type="hidden" name="parcel_id" value="{{ p.id }}">
+          <select name="status" style="font-size:0.78rem; border:1px solid var(--line); border-radius:3px;">
+            {% for s in ['CREATED','IN_TRANSIT','OUT_FOR_DELIVERY','DELIVERED','FAILED'] %}
+            <option value="{{ s }}" {{ 'selected' if p.status==s }}>{{ s.replace('_',' ').title() }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-sm" type="submit">Update</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+  No parcels yet. <a href="{{ url_for('add_parcel') }}">Create the first one</a> to see it show up here.
+</div>
+{% endif %}
+
+{% endblock %}

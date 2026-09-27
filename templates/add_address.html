@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Register Address — GeoCode Parcel System{% endblock %}
+{% block content %}
+
+<div class="section-head"><h2>Register a receiver's address</h2></div>
+<p style="color:var(--ink-soft); max-width:60ch; margin-top:-8px;">
+  This is done <strong>once per receiver</strong> — ideally by the receiver
+  themselves, standing at their own doorstep, tapping "Use my current
+  location". Every future parcel to this phone number reuses this same
+  GeoCode. This is the step that actually captures a real location — not
+  the sender's.
+</p>
+
+{% if success %}
+<div class="result-card">
+  <img src="{{ url_for('static', filename=address.qr_path) }}" width="160" height="160" alt="QR code">
+  <div class="result-meta">
+    <dl style="margin:0;">
+      <dt>Receiver</dt><dd>{{ address.receiver_name }} &middot; {{ address.receiver_phone }}</dd>
+      <dt>Label</dt><dd>{{ address.label }}</dd>
+      <dt>GeoCode</dt><dd><span class="code-chip">{{ address.geocode }}</span></dd>
+      <dt>Coordinates</dt><dd>{{ "%.6f"|format(address.lat) }}, {{ "%.6f"|format(address.lon) }}</dd>
+    </dl>
+    <div style="margin-top:18px; display:flex; gap:10px;">
+      <a href="{{ url_for('add_address') }}" class="btn btn-outline btn-sm">Register another</a>
+      <a href="{{ url_for('add_parcel') }}" class="btn btn-sm">Create a parcel for them</a>
+    </div>
+  </div>
+</div>
+<div style="margin-top:20px; border:1px solid var(--line); border-radius:6px; overflow:hidden; max-width:560px;">
+  <iframe
+    src="https://www.openstreetmap.org/export/embed.html?bbox={{ address.lon|float - 0.002 }}%2C{{ address.lat|float - 0.002 }}%2C{{ address.lon|float + 0.002 }}%2C{{ address.lat|float + 0.002 }}&layer=mapnik&marker={{ address.lat }}%2C{{ address.lon }}"
+    width="100%" height="240" style="border:0;" loading="lazy">
+  </iframe>
+</div>
+{% else %}
+
+<form method="post" class="form-card">
+  <div class="field-row">
+    <div class="field">
+      <label for="receiver_name">Receiver name</label>
+      <input type="text" id="receiver_name" name="receiver_name" required
+             value="{{ form.receiver_name if form else '' }}">
+    </div>
+    <div class="field">
+      <label for="receiver_phone">Receiver phone</label>
+      <input type="text" id="receiver_phone" name="receiver_phone" required
+             value="{{ form.receiver_phone if form else '' }}">
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="label">Address label <span style="font-weight:400; color:var(--ink-soft);">(for your own reference)</span></label>
+    <input type="text" id="label" name="label" required placeholder="e.g. Home — Sector 12"
+           value="{{ form.label if form else '' }}">
+  </div>
+
+  <div class="field">
+    <label>Their exact location</label>
+    <button type="button" class="btn btn-outline" id="gps-btn" style="width:100%; text-align:center;">
+      📍 Use my current location
+    </button>
+    <div class="field-hint" id="gps-status">
+      The receiver (or whoever is standing at this address right now) taps this.
+    </div>
+  </div>
+
+  <div id="preview-box" style="display:none; background:#fbeee2; border:1px solid var(--line); border-radius:4px; padding:12px 14px; margin-bottom:18px;">
+    <div class="field-hint" style="margin:0 0 4px;">Preview GeoCode</div>
+    <span class="code-chip" id="preview-code" style="font-size:1rem;"></span>
+    <div class="field-hint" style="margin-top:6px;" id="preview-coords"></div>
+  </div>
+
+  <input type="hidden" id="latitude" name="latitude">
+  <input type="hidden" id="longitude" name="longitude">
+
+  <details style="margin-bottom:18px;">
+    <summary style="cursor:pointer; font-size:0.85rem; color:var(--ink-soft);">Not physically there right now? Enter coordinates manually</summary>
+    <div class="field-hint" style="margin-top:8px;">Search the place on
+      <a href="https://www.google.com/maps" target="_blank" rel="noopener">Google Maps</a>, right-click it, copy the
+      coordinates, and paste them below.</div>
+    <div class="field-row" style="margin-top:10px;">
+      <div class="field"><input type="text" id="latitude-manual" placeholder="28.6315"></div>
+      <div class="field"><input type="text" id="longitude-manual" placeholder="77.2167"></div>
+    </div>
+    <button type="button" class="btn btn-outline btn-sm" id="manual-apply">Apply these coordinates</button>
+  </details>
+
+  <button type="submit" class="btn" id="submit-btn" disabled>Register address &amp; generate GeoCode</button>
+</form>
+
+<script>
+const latField = document.getElementById('latitude');
+const lonField = document.getElementById('longitude');
+const gpsBtn = document.getElementById('gps-btn');
+const gpsStatus = document.getElementById('gps-status');
+const submitBtn = document.getElementById('submit-btn');
+const previewBox = document.getElementById('preview-box');
+const previewCode = document.getElementById('preview-code');
+const previewCoords = document.getElementById('preview-coords');
+
+async function previewFromCoords(lat, lon) {
+  const res = await fetch(`/api/geocode-from-coords?lat=${lat}&lon=${lon}`);
+  const data = await res.json();
+  if (data.geocode) {
+    previewBox.style.display = 'block';
+    previewCode.textContent = data.geocode;
+    previewCoords.textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+    submitBtn.disabled = false;
+  }
+}
+
+gpsBtn.addEventListener('click', () => {
+  if (!navigator.geolocation) {
+    gpsStatus.textContent = "This browser doesn't support location access. Use manual entry below.";
+    return;
+  }
+  gpsStatus.textContent = 'Requesting location permission…';
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const { latitude, longitude, accuracy } = pos.coords;
+      latField.value = latitude.toFixed(6);
+      lonField.value = longitude.toFixed(6);
+      gpsStatus.textContent = `Location captured (±${Math.round(accuracy)}m accuracy).`;
+      previewFromCoords(latitude, longitude);
+    },
+    () => { gpsStatus.textContent = 'Location access denied or unavailable. Use manual entry below.'; },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+});
+
+document.getElementById('manual-apply').addEventListener('click', () => {
+  const lat = parseFloat(document.getElementById('latitude-manual').value);
+  const lon = parseFloat(document.getElementById('longitude-manual').value);
+  if (isNaN(lat) || isNaN(lon)) { alert('Enter valid numbers for both fields.'); return; }
+  latField.value = lat.toFixed(6);
+  lonField.value = lon.toFixed(6);
+  gpsStatus.textContent = 'Coordinates set manually.';
+  previewFromCoords(lat, lon);
+});
+</script>
+{% endif %}
+{% endblock %}
